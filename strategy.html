@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive E2E Test Strategy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Visualization & Content Choices:
+        Report Info: Section Headings -> Goal: Navigation -> Viz/Presentation: Sidebar links -> Interaction: Click to show section.
+        Report Info: Test Case Table -> Goal: Detailed View -> Viz/Presentation: HTML Table, with overflow handling -> Interaction: View full table content.
+        Report Info: Code Examples (Gherkin/Java) -> Goal: Readability/Usability -> Viz/Presentation: Styled <pre><code> blocks -> Interaction: Copy to clipboard button.
+        Report Info: Project Folder Structure -> Goal: Visual Understanding -> Viz/Presentation: Nested HTML lists styled as a tree -> Interaction: Static display.
+        Report Info: Lists & Text -> Goal: Information Display -> Viz/Presentation: Standard HTML lists and paragraphs.
+        Justification: Methods chosen for clarity, ease of use, and to make the dense report content more digestible and interactive without complex visualizations, as the content is primarily textual and structural.
+        Library/Method: Vanilla JS for interactions, Tailwind CSS for styling. Chart.js/Plotly.js not used as data is not suitable for charting.
+        CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .code-block {
+            position: relative;
+            background-color: #2d2d2d; /* Darker background for code */
+            color: #f8f8f2; /* Light text for code */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin-bottom: 1rem;
+        }
+        .code-block pre {
+            margin: 0;
+            white-space: pre;
+        }
+        .copy-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #4a5568; /* Tailwind gray-700 */
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            border: none;
+        }
+        .copy-button:hover {
+            background-color: #2c3340; /* Tailwind gray-800 */
+        }
+        /* Sidebar scrollbar styling */
+        #sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+        #sidebar::-webkit-scrollbar-track {
+            background: #f1f1f1; /* Light grey track */
+            border-radius: 10px;
+        }
+        #sidebar::-webkit-scrollbar-thumb {
+            background: #888; /* Dark grey thumb */
+            border-radius: 10px;
+        }
+        #sidebar::-webkit-scrollbar-thumb:hover {
+            background: #555; /* Darker thumb on hover */
+        }
+        /* Main content scrollbar styling */
+        #main-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        #main-content::-webkit-scrollbar-track {
+            background: #e5e7eb; /* Tailwind gray-200 */
+            border-radius: 10px;
+        }
+        #main-content::-webkit-scrollbar-thumb {
+            background: #9ca3af; /* Tailwind gray-400 */
+            border-radius: 10px;
+        }
+        #main-content::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* Tailwind gray-500 */
+        }
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+            border: 1px solid #e5e7eb; /* Tailwind gray-200 */
+            border-radius: 0.5rem;
+        }
+        table {
+            min-width: 800px; /* Ensure table has a minimum width to demonstrate scrolling if needed */
+        }
+        .folder-tree ul {
+            padding-left: 1.5rem;
+            list-style-type: none;
+            border-left: 1px dashed #cbd5e1; /* Tailwind coolGray-300 */
+        }
+        .folder-tree li {
+            position: relative;
+            padding-left: 1.25rem; /* Space for icons */
+            margin-bottom: 0.25rem;
+        }
+        .folder-tree li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.6em; /* Adjust vertical alignment */
+            width: 0.75rem;
+            height: 1px;
+            background-color: #cbd5e1; /* Tailwind coolGray-300 */
+        }
+        .folder-tree .folder::before {
+            content: '📁'; /* Folder icon */
+            position: absolute;
+            left: 0;
+            top: 0.1em;
+            width: auto;
+            height: auto;
+            background-color: transparent;
+            border: none;
+        }
+        .folder-tree .file::before {
+            content: '📄'; /* File icon */
+            position: absolute;
+            left: 0;
+            top: 0.1em;
+            width: auto;
+            height: auto;
+            background-color: transparent;
+            border: none;
+        }
+    </style>
+</head>
+<body class="bg-stone-100 text-stone-800">
+    <div class="flex h-screen">
+        <nav id="sidebar" class="w-1/4 bg-stone-200 p-6 overflow-y-auto space-y-2 shadow-lg">
+            <h1 class="text-2xl font-bold text-amber-700 mb-6 border-b-2 border-amber-600 pb-2">E2E Test Strategy</h1>
+            <a href="#overview" class="block py-2 px-3 rounded-md hover:bg-amber-200 hover:text-amber-800 transition-colors duration-150 nav-link">1. Overview & Goals</a>
+            <a href="#scope" class="block py-2 px-3 rounded-md hover:bg-amber-200 hover:text-amber-800 transition-colors duration-150 nav-link">2. Scope of Testing</a>
+            <a href="#tech-stack" class="block py-2 px-3 rounded-md hover:bg-amber-200 hover:text-amber-800 transition-colors duration-150 nav-link">3. Technology Stack</a>
+            <a href="#doc-structure" class="block py-2 px-3 rounded-md hover:bg-amber-200 hover:text-amber-800 transition-colors duration-150 nav-link">4. Documentation Structure</a>
+            <a href="#test-scenarios" class="block py-2 px-3 rounded-md hover:bg-amber-200 hover:text-amber-800 transition-colors duration-150 nav-link">5. Test Scenarios</a>
+            <a href="#test-cases" class="block py-2 px-3 rounded-md hover:bg-amber-200 hover:text-amber-800 transition-colors duration-150 nav-link">6. Test Cases Example</a>
+            <a href="#cucumber" class="block py-2 px-3 rounded-md hover:bg-amber-200 hover:text-amber-800 transition-colors duration-150 nav-link">7. Cucumber Integration</a>
+            <a href="#selenium" class="block py-2 px-3 rounded-md hover:bg-amber-200 hover:text-amber-800 transition-colors duration-150 nav-link">8. Selenium & POM</a>
+            <a href="#restassured" class="block py-2 px-3 rounded-md hover:bg-amber-200 hover:text-amber-800 transition-colors duration-150 nav-link">9. RestAssured</a>
+            <a href="#jdbc" class="block py-2 px-3 rounded-md hover:bg-amber-200 hover:text-amber-800 transition-colors duration-150 nav-link">10. JDBC</a>
+            <a href="#testng" class="block py-2 px-3 rounded-md hover:bg-amber-200 hover:text-amber-800 transition-colors duration-150 nav-link">11. TestNG Integration</a>
+            <a href="#reporting" class="block py-2 px-3 rounded-md hover:bg-amber-200 hover:text-amber-800 transition-colors duration-150 nav-link">12. Reporting Strategy</a>
+            <a href="#project-structure" class="block py-2 px-3 rounded-md hover:bg-amber-200 hover:text-amber-800 transition-colors duration-150 nav-link">13. Project Folder Structure</a>
+            <a href="#key-considerations" class="block py-2 px-3 rounded-md hover:bg-amber-200 hover:text-amber-800 transition-colors duration-150 nav-link">14. Key Considerations</a>
+        </nav>
+
+        <main id="main-content" class="w-3/4 p-8 overflow-y-auto bg-white shadow-inner">
+            <div id="overview" class="content-section space-y-4">
+                <h2 class="text-3xl font-semibold text-amber-700 border-b border-stone-300 pb-2">1. Overview & Goals</h2>
+                <p class="text-lg leading-relaxed"><strong>Purpose:</strong> To establish a comprehensive End-to-End (E2E) testing strategy for an e-commerce website. This ensures that all integrated components (UI, APIs, Database) function correctly together, mimicking real user scenarios from start to finish.</p>
+                <p class="text-lg leading-relaxed"><strong>Goals:</strong></p>
+                <ul class="list-disc list-inside space-y-2 pl-4 text-lg">
+                    <li>Validate complete user flows and business processes.</li>
+                    <li>Ensure data integrity across different layers of the application.</li>
+                    <li>Increase confidence in releases by identifying critical bugs early.</li>
+                    <li>Create a maintainable and scalable automation framework.</li>
+                    <li>Provide clear documentation for test coverage and execution.</li>
+                </ul>
+                <p class="mt-6 text-sm text-stone-500">This interactive application aims to make the E2E Test Strategy document more accessible and explorable. Navigate through the sections using the sidebar to delve into specific aspects of the testing approach.</p>
+            </div>
+
+            <div id="scope" class="content-section space-y-4">
+                <h2 class="text-3xl font-semibold text-amber-700 border-b border-stone-300 pb-2">2. Scope of Testing</h2>
+                <p class="text-lg leading-relaxed">This section outlines the key user journeys and system interfaces that fall under the E2E testing scope, ensuring comprehensive coverage of the e-commerce platform's critical functionalities.</p>
+                <h3 class="text-2xl font-medium text-teal-700 mt-4">Key User Journeys:</h3>
+                <p class="text-lg leading-relaxed">The E2E tests will cover critical user journeys, including but not limited to:</p>
+                <ol class="list-decimal list-inside space-y-2 pl-4 text-lg">
+                    <li><strong>User Registration:</strong> New user account creation.</li>
+                    <li><strong>User Login & Logout:</strong> Authentication of existing users.</li>
+                    <li><strong>Product Search & Discovery:</strong> Searching for products using keywords, categories, and filters.</li>
+                    <li><strong>Product Browsing:</strong> Navigating through product listing pages, applying sorting.</li>
+                    <li><strong>Product Details Viewing:</strong> Accessing and viewing individual product pages.</li>
+                    <li><strong>Shopping Cart Management:</strong> Adding products to the cart, removing products, updating quantities.</li>
+                    <li><strong>Checkout Process:</strong>
+                        <ul class="list-disc list-inside pl-6 space-y-1">
+                            <li>Guest checkout.</li>
+                            <li>Registered user checkout.</li>
+                            <li>Entering/selecting shipping address.</li>
+                            <li>Entering/selecting billing address.</li>
+                            <li>Selecting payment method (mocked or test gateway).</li>
+                            <li>Order review and confirmation.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Order History Viewing:</strong> Registered users viewing their past orders.</li>
+                    <li><strong>User Profile Management:</strong> Updating user details (e.g., address, password).</li>
+                    <li><strong>(Optional) Admin Functionalities:</strong> If in scope, basic admin tasks like product stock updates or order status changes.</li>
+                </ol>
+                <h3 class="text-2xl font-medium text-teal-700 mt-6">Interfaces to Test:</h3>
+                <ul class="list-disc list-inside space-y-2 pl-4 text-lg">
+                    <li><strong>User Interface (UI):</strong> Primary interaction point, tested using <strong>Selenium WebDriver</strong>.</li>
+                    <li><strong>Application Programming Interfaces (APIs):</strong> Backend REST APIs tested using <strong>RestAssured</strong> for validating business logic, data consistency, and pre/post-conditions for UI tests.</li>
+                    <li><strong>Database (DB):</strong> Direct database checks using <strong>JDBC</strong> to verify data persistence, accuracy, and integrity.</li>
+                </ul>
+            </div>
+
+            <div id="tech-stack" class="content-section space-y-4">
+                <h2 class="text-3xl font-semibold text-amber-700 border-b border-stone-300 pb-2">3. Technology Stack & Framework Overview</h2>
+                <p class="text-lg leading-relaxed">The chosen technology stack forms the backbone of our E2E automation framework, enabling robust and efficient testing across the e-commerce platform.</p>
+                <ul class="list-disc list-inside space-y-2 pl-4 text-lg bg-stone-50 p-4 rounded-lg shadow">
+                    <li><strong>Programming Language:</strong> Java</li>
+                    <li><strong>Build & Dependency Management:</strong> Maven</li>
+                    <li><strong>Behavior-Driven Development (BDD):</strong> Cucumber (for writing tests in Gherkin)</li>
+                    <li><strong>UI Automation:</strong> Selenium WebDriver</li>
+                    <li><strong>API Automation:</strong> RestAssured</li>
+                    <li><strong>Database Interaction:</strong> JDBC</li>
+                    <li><strong>Test Runner & Assertion Library:</strong> TestNG</li>
+                    <li><strong>Reporting:</strong> Cucumber Reports, TestNG Reports (potentially enhanced with ExtentReports/Allure)</li>
+                    <li><strong>Design Pattern:</strong> Page Object Model (POM) for UI tests.</li>
+                </ul>
+            </div>
+
+            <div id="doc-structure" class="content-section space-y-4">
+                <h2 class="text-3xl font-semibold text-amber-700 border-b border-stone-300 pb-2">4. Documentation Structure</h2>
+                <p class="text-lg leading-relaxed">A clear and organized documentation structure is vital for maintaining an effective testing process. The following components will be maintained:</p>
+                <ol class="list-decimal list-inside space-y-2 pl-4 text-lg">
+                    <li><strong>Test Plan:</strong> High-level document outlining scope, objectives, approach, resources, schedule, and deliverables. (This interactive guide itself is derived from such a plan).</li>
+                    <li><strong>Test Scenarios:</strong> High-level descriptions of functionalities or user flows to be tested.</li>
+                    <li><strong>Test Cases:</strong> Detailed, step-by-step instructions for executing a specific test.</li>
+                    <li><strong>Cucumber Feature Files (`.feature`):</strong> Human-readable test specifications in Gherkin.</li>
+                    <li><strong>Step Definitions (Java):</strong> Java methods implementing Gherkin steps.</li>
+                    <li><strong>Page Object Model (POM) Classes:</strong> Java classes for UI pages.</li>
+                    <li><strong>API Test Utilities/Clients:</strong> Java classes for RestAssured API calls.</li>
+                    <li><strong>Database Validation Utilities:</strong> Java helper classes for JDBC.</li>
+                    <li><strong>Test Data Management Strategy:</strong> Document on how test data is managed.</li>
+                    <li><strong>Environment Configuration:</strong> Details about test environments.</li>
+                    <li><strong>Test Execution Reports:</strong> Generated reports from test runs.</li>
+                </ol>
+            </div>
+
+            <div id="test-scenarios" class="content-section space-y-4">
+                <h2 class="text-3xl font-semibold text-amber-700 border-b border-stone-300 pb-2">5. Test Scenarios (High-Level Examples)</h2>
+                <p class="text-lg leading-relaxed">Test Scenarios provide broad outlines of what to test. Each scenario is then broken down into detailed test cases. Here are some examples:</p>
+                <ul class="list-disc list-inside space-y-2 pl-4 text-lg bg-stone-50 p-4 rounded-lg shadow">
+                    <li><strong>TS_USER_AUTH_001:</strong> Verify user registration and login functionality.</li>
+                    <li><strong>TS_USER_AUTH_002:</strong> Verify login failure with invalid credentials.</li>
+                    <li><strong>TS_PROD_DISCOVERY_001:</strong> Verify product search using keywords and filters.</li>
+                    <li><strong>TS_PROD_DETAILS_001:</strong> Verify product details page information accuracy.</li>
+                    <li><strong>TS_CART_MGMT_001:</strong> Verify adding and removing items from the shopping cart.</li>
+                    <li><strong>TS_CART_MGMT_002:</strong> Verify updating item quantity in the shopping cart.</li>
+                    <li><strong>TS_CHECKOUT_GUEST_001:</strong> Verify end-to-end guest user checkout process.</li>
+                    <li><strong>TS_CHECKOUT_REG_USER_001:</strong> Verify end-to-end registered user checkout process.</li>
+                    <li><strong>TS_ORDER_MGMT_001:</strong> Verify registered user can view order history and order details.</li>
+                    <li><strong>TS_API_PRODUCT_001:</strong> Verify API endpoint for fetching product list returns correct data and structure.</li>
+                    <li><strong>TS_DB_USER_001:</strong> Verify user data is correctly stored in the database upon registration.</li>
+                    <li><strong>TS_E2E_FULL_PURCHASE_001:</strong> Complete E2E flow: User registration, login, product search, add to cart, checkout, and order verification.</li>
+                </ul>
+            </div>
+
+            <div id="test-cases" class="content-section space-y-4">
+                <h2 class="text-3xl font-semibold text-amber-700 border-b border-stone-300 pb-2">6. Test Cases (Detailed Example)</h2>
+                <p class="text-lg leading-relaxed">This section provides a detailed example of a test case, illustrating how UI actions, API validations, and Database checks are integrated to verify an end-to-end user flow. The table below outlines the steps for a registered user purchasing a product.</p>
+                
+                <div class="bg-amber-50 p-4 rounded-lg shadow-md">
+                    <p class="font-semibold text-teal-700">Test Case ID: TC_E2E_REG_USER_PURCHASE_001</p>
+                    <p><strong class="text-stone-700">Test Scenario Ref:</strong> TS_E2E_FULL_PURCHASE_001</p>
+                    <p><strong class="text-stone-700">Description:</strong> Verify a new user can register, log in, search for a product, add it to the cart, complete the checkout process, and the order is correctly reflected in the system.</p>
+                </div>
+
+                <h4 class="text-xl font-medium text-teal-700 mt-4">Preconditions:</h4>
+                <ol class="list-decimal list-inside space-y-1 pl-4 text-lg">
+                    <li>The e-commerce website is accessible.</li>
+                    <li>The product "Elegant Watch" (ID: `EW100`) is available in stock (e.g., 10 units).</li>
+                    <li>Test payment gateway is configured and operational.</li>
+                    <li>A unique email address for registration (e.g., `testuser<timestamp>@example.com`).</li>
+                </ol>
+
+                <h4 class="text-xl font-medium text-teal-700 mt-4">Test Data:</h4>
+                <ul class="list-disc list-inside space-y-1 pl-4 text-lg">
+                    <li>Product Name: "Elegant Watch"</li>
+                    <li>Product ID: `EW100`</li>
+                    <li>User Email: (Generated dynamically, e.g., `testuser1680000000@example.com`)</li>
+                    <li>User Password: `Password123!`</li>
+                    <li>Shipping Address: 123 Test St, Testville, TS 12345</li>
+                    <li>Payment Method: Test Credit Card (details provided by test gateway)</li>
+                </ul>
+                
+                <h4 class="text-xl font-medium text-teal-700 mt-6 mb-2">Test Steps:</h4>
+                <div class="table-container shadow-lg">
+                    <table class="min-w-full divide-y divide-stone-300 border border-stone-300">
+                        <thead class="bg-stone-200">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-stone-600 uppercase tracking-wider">Step #</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-stone-600 uppercase tracking-wider">Action (UI - Selenium)</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-stone-600 uppercase tracking-wider">Expected UI Result</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-stone-600 uppercase tracking-wider">API Validation (RestAssured)</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-stone-600 uppercase tracking-wider">DB Validation (JDBC)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-stone-200">
+                            <tr>
+                                <td class="px-4 py-3 text-sm text-stone-700">1</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>User Registration:</strong> Navigate to registration page. Fill registration form with unique email and password. Submit.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">Registration successful message. User is redirected to login or dashboard.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>After UI action:</strong> Call <code>/api/users/me</code> (with session token if applicable) to verify user details. Or check if <code>/api/users?email={email}</code> now finds the user.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">Query <code>users</code> table: <code>SELECT * FROM users WHERE email = 'testuser...</code>. Verify user record exists, <code>is_active=true</code>, password hashed.</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-3 text-sm text-stone-700">2</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>User Login:</strong> Navigate to login page. Enter registered email and password. Submit.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">Login successful. User is redirected to homepage/dashboard. User's name visible in header.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>After UI action:</strong> Call <code>/api/auth/login</code> or <code>/api/users/me</code> to confirm session.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">Query <code>user_sessions</code> table (if applicable): Verify an active session record.</td>
+                            </tr>
+                             <tr>
+                                <td class="px-4 py-3 text-sm text-stone-700">3</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>Product Search:</strong> On homepage, enter "Elegant Watch" in search bar. Click "Search".</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">Search results page displays "Elegant Watch".</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>Before UI action (optional):</strong> Call <code>/api/products?search=Elegant Watch</code> to confirm product exists.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">Query <code>products</code> table: <code>SELECT name, stock_quantity FROM products WHERE product_id = 'EW100'</code>. Verify name and initial stock.</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-3 text-sm text-stone-700">4</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>View Product & Add to Cart:</strong> Click on "Elegant Watch". On product details page, click "Add to Cart".</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">Product details page shown. Item added to cart message. Cart icon updates.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>After UI action:</strong> Call <code>/api/cart</code> to verify "Elegant Watch" (ID: <code>EW100</code>, quantity: 1) is in the cart.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">Query <code>cart_items</code> table: <code>SELECT product_id, quantity FROM cart_items WHERE user_id = {userId} AND product_id = 'EW100'</code>. Verify record exists with quantity 1.</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-3 text-sm text-stone-700">5</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>Proceed to Checkout:</strong> Navigate to cart page. Click "Proceed to Checkout".</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">Cart page shows "Elegant Watch". Redirected to first step of checkout.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">N/A</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">N/A</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-3 text-sm text-stone-700">6</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>Enter Shipping Details:</strong> Fill in shipping address form. Click "Continue".</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">Shipping address accepted. Redirected to Payment Method step.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>After UI action (optional):</strong> If addresses are saved, call <code>/api/users/me/addresses</code> to check.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">If addresses are saved: Query <code>user_addresses</code> table for the new shipping address.</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-3 text-sm text-stone-700">7</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>Enter Payment Details:</strong> Select "Test Credit Card". Enter mock card details. Click "Continue/Review Order".</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">Payment details accepted. Redirected to Order Review page.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">N/A (Payment gateway interactions are usually external or heavily mocked).</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">N/A</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-3 text-sm text-stone-700">8</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>Confirm Order:</strong> Review order details. Click "Place Order".</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">Order confirmation page displayed with an Order ID. Success message.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>After UI action:</strong> Call <code>/api/orders/{orderIdFromUI}</code> to fetch order details. Verify product, quantity, price, user, status.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">Query <code>orders</code> table: <code>SELECT * FROM orders WHERE order_id = '{orderId}'</code>. Verify details. Query <code>order_items</code> table for product details.</td>
+                            </tr>
+                             <tr>
+                                <td class="px-4 py-3 text-sm text-stone-700">9</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>Verify Stock Update:</strong> (No UI action)</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">N/A</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>After Order:</strong> Call <code>/api/products/EW100</code> to check updated stock quantity.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">Query <code>products</code> table: <code>SELECT stock_quantity FROM products WHERE product_id = 'EW100'</code>. Verify stock is reduced.</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-3 text-sm text-stone-700">10</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>Verify Order History:</strong> Navigate to "My Orders" page.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">The newly placed order is listed with correct details.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700"><strong>After Order:</strong> Call <code>/api/users/me/orders</code> to verify the new order is listed.</td>
+                                <td class="px-4 py-3 text-sm text-stone-700">N/A (already verified by querying <code>orders</code> table).</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                 <h4 class="text-xl font-medium text-teal-700 mt-4">Postconditions:</h4>
+                <ol class="list-decimal list-inside space-y-1 pl-4 text-lg">
+                    <li>A new user account is created and active.</li>
+                    <li>An order is successfully placed and recorded.</li>
+                    <li>Product inventory for "Elegant Watch" is updated.</li>
+                    <li>The user can view the order in their history.</li>
+                </ol>
+            </div>
+
+            <div id="cucumber" class="content-section space-y-4">
+                <h2 class="text-3xl font-semibold text-amber-700 border-b border-stone-300 pb-2">7. Cucumber Integration</h2>
+                <p class="text-lg leading-relaxed">Cucumber enables Behavior-Driven Development (BDD), allowing tests to be written in a human-readable Gherkin syntax. This promotes collaboration between technical and non-technical team members.</p>
+                <h3 class="text-2xl font-medium text-teal-700 mt-4">Example <code>.feature</code> file:</h3>
+                <p class="text-md italic text-stone-600">File: <code>src/test/resources/features/ecommerce_purchase.feature</code></p>
+                <div class="code-block">
+                    <button class="copy-button" onclick="copyCode(this)">Copy</button>
+                    <pre><code class="language-gherkin">
+Feature: E-commerce Product Purchase Flow
+  As a customer, I want to be able to register, log in, find a product,
+  add it to my cart, and complete the purchase, so that I can buy items from the website.
+
+  @E2EPurchase @Regression @Smoke
+  Scenario: Successful end-to-end product purchase by a new registered user
+    Given I am a new user on the e-commerce website
+    When I register with a unique email and password "Password123!"
+    And I log in with my registered email and password "Password123!"
+    And I search for the product "Elegant Watch"
+    And I add the "Elegant Watch" to my cart from its details page
+    And I proceed to checkout from the cart page
+    And I enter the shipping address:
+      | Street    | City      | ZipCode | Country |
+      | 123 Test St | Testville | 12345   | USA     |
+    And I enter mock payment details for "TestCreditCard"
+    And I confirm and place the order
+    Then I should see an order confirmation page with a unique order ID
+    And the order for "Elegant Watch" should be present in my order history
+    And the stock for product "Elegant Watch" with ID "EW100" should be reduced by 1 in the database
+    And the API for order details should confirm the purchase of "Elegant Watch"
+                    </code></pre>
+                </div>
+
+                <h3 class="text-2xl font-medium text-teal-700 mt-6">Conceptual Step Definition Java Class:</h3>
+                 <p class="text-md italic text-stone-600">File: <code>src/test/java/com/example/ecommerce/stepdefinitions/PurchaseSteps.java</code> (Conceptual)</p>
+                <div class="code-block">
+                    <button class="copy-button" onclick="copyCode(this)">Copy</button>
+                    <pre><code class="language-java">
+package com.example.ecommerce.stepdefinitions;
+
+import io.cucumber.java.en.*;
+import io.cucumber.datatable.DataTable;
+// Import Page Objects, API clients, DB utils, TestNG Assertions
+// import com.example.ecommerce.pages.*;
+// import com.example.ecommerce.utils.*; 
+import org.testng.Assert;
+
+public class PurchaseSteps {
+
+    // private HomePage homePage;
+    // ... other page object declarations
+
+    private String userEmail; 
+    private String orderId;
+
+    // Constructor or DI for pages and utils
+
+    @Given("I am a new user on the e-commerce website")
+    public void i_am_a_new_user_on_the_e_commerce_website() {
+        // homePage.navigateTo();
+        this.userEmail = "testuser" + System.currentTimeMillis() + "@example.com";
+        System.out.println("User navigates to homepage. Generated email: " + this.userEmail);
+    }
+
+    @When("I register with a unique email and password {string}")
+    public void i_register_with_a_unique_email_and_password(String password) {
+        // registrationPage.navigateTo();
+        // registrationPage.registerUser(this.userEmail, password, "Test", "User");
+        System.out.println("User registers with email: " + this.userEmail + " and password: " + password);
+        // Assert.assertTrue(registrationPage.isRegistrationSuccessful());
+    }
+
+    @When("I log in with my registered email and password {string}")
+    public void i_log_in_with_my_registered_email_and_password(String password) {
+        // loginPage.navigateTo();
+        // loginPage.login(this.userEmail, password);
+        System.out.println("User logs in with email: " + this.userEmail);
+        // Assert.assertTrue(homePage.isUserLoggedIn("Test"));
+    }
+    
+    // ... other step definitions ...
+
+    @When("I confirm and place the order")
+    public void i_confirm_and_place_the_order() {
+        // this.orderId = checkoutPage.placeOrder(); 
+        this.orderId = "ORD" + System.currentTimeMillis(); // Mock order ID
+        System.out.println("Order placed. Order ID: " + this.orderId);
+        Assert.assertNotNull(this.orderId, "Order ID should not be null.");
+    }
+
+    @Then("I should see an order confirmation page with a unique order ID")
+    public void i_should_see_an_order_confirmation_page_with_a_unique_order_id() {
+        System.out.println("Verifying order confirmation page for order ID: " + this.orderId);
+        // Assert.assertTrue(orderConfirmationPage.isOrderConfirmationDisplayed());
+        // Assert.assertEquals(orderConfirmationPage.getOrderId(), this.orderId);
+    }
+    // ... other step definitions ...
+}
+                    </code></pre>
+                </div>
+            </div>
+
+            <div id="selenium" class="content-section space-y-4">
+                <h2 class="text-3xl font-semibold text-amber-700 border-b border-stone-300 pb-2">8. Selenium & Page Object Model (POM)</h2>
+                <p class="text-lg leading-relaxed">Selenium WebDriver is used for UI automation. The Page Object Model (POM) design pattern is crucial for creating maintainable and robust UI tests by encapsulating page-specific elements and interactions into separate classes.</p>
+                <h3 class="text-2xl font-medium text-teal-700 mt-4">Benefits of POM:</h3>
+                <ul class="list-disc list-inside space-y-1 pl-4 text-lg">
+                    <li>Improves test maintenance and reduces code duplication.</li>
+                    <li>Creates an object repository for UI elements.</li>
+                    <li>Enhances readability of test scripts.</li>
+                </ul>
+                <h3 class="text-2xl font-medium text-teal-700 mt-4">Structure:</h3>
+                <p class="text-lg leading-relaxed">Each web page will have a corresponding Java class (e.g., <code>HomePage.java</code>, <code>LoginPage.java</code>, <code>ProductDetailsPage.java</code>).</p>
+                <h3 class="text-2xl font-medium text-teal-700 mt-4">Each Page Class Contains:</h3>
+                <ul class="list-disc list-inside space-y-1 pl-4 text-lg">
+                    <li>Locators for web elements (e.g., using <code>@FindBy</code> annotations).</li>
+                    <li>Methods performing operations on these elements (e.g., <code>enterUsername(String username)</code>, <code>clickLoginButton()</code>).</li>
+                </ul>
+                 <p class="text-lg leading-relaxed mt-2">WebDriver management (initialization, quitting) and explicit waits (<code>WebDriverWait</code>) are essential for handling dynamic elements and synchronization, typically managed in a base test class or via TestNG listeners.</p>
+            </div>
+
+            <div id="restassured" class="content-section space-y-4">
+                <h2 class="text-3xl font-semibold text-amber-700 border-b border-stone-300 pb-2">9. RestAssured for API Testing & Validation</h2>
+                <p class="text-lg leading-relaxed">RestAssured is a Java library used for testing RESTful APIs. In an E2E context, it plays a vital role in:</p>
+                <ul class="list-disc list-inside space-y-2 pl-4 text-lg bg-stone-50 p-4 rounded-lg shadow">
+                    <li><strong>Pre-conditions/Test Data Setup:</strong> Creating test data (e.g., a user, a product) via API calls before a UI test begins, or checking prerequisites like product stock.</li>
+                    <li><strong>Action Verification:</strong> After a UI action, calling an API to immediately verify the backend state. For example, after adding an item to the cart via the UI, use an API call to the cart endpoint to confirm the item and its quantity.</li>
+                    <li><strong>Direct API Tests:</strong> While the primary focus here is E2E, RestAssured can also be used for dedicated API test suites.</li>
+                    <li><strong>Post-conditions/Teardown:</strong> Cleaning up test data created during the test execution using API calls.</li>
+                </ul>
+                <h3 class="text-2xl font-medium text-teal-700 mt-4">Utility Classes:</h3>
+                <p class="text-lg leading-relaxed">An <code>ApiClient.java</code> class typically centralizes API interaction logic, including methods for common HTTP requests (GET, POST, PUT, DELETE), authentication handling, request/response specifications, and response parsing (e.g., using JsonPath). POJOs (Plain Old Java Objects) are often used for serializing request bodies and deserializing response bodies, enhancing type safety and code readability.</p>
+            </div>
+
+            <div id="jdbc" class="content-section space-y-4">
+                <h2 class="text-3xl font-semibold text-amber-700 border-b border-stone-300 pb-2">10. JDBC for Database Validation</h2>
+                <p class="text-lg leading-relaxed">Java Database Connectivity (JDBC) is used to interact directly with the database. This is crucial for:</p>
+                <ul class="list-disc list-inside space-y-2 pl-4 text-lg bg-stone-50 p-4 rounded-lg shadow">
+                    <li><strong>Verifying Data Persistence:</strong> Ensuring that data submitted through the UI or processed by APIs is correctly and accurately saved in the database tables (e.g., new user registrations, order details, product updates).</li>
+                    <li><strong>Validating Data Integrity:</strong> Checking relationships between different tables and the correctness of data after specific operations (e.g., ensuring order items are correctly linked to orders, inventory counts are accurately updated after a purchase).</li>
+                    <li><strong>Test Data Setup/Teardown (less common for E2E, prefer API if possible):</strong> Directly inserting or cleaning up specific data records if APIs are not available or suitable for these tasks. However, using APIs for setup/teardown is generally preferred as it tests the application through its intended interfaces.</li>
+                </ul>
+                 <h3 class="text-2xl font-medium text-teal-700 mt-4">Utility Classes:</h3>
+                <p class="text-lg leading-relaxed">A <code>DbClient.java</code> or <code>DatabaseUtils.java</code> class is typically created to encapsulate database interaction logic. This utility would include methods to establish and close database connections (reading connection details from configuration files), execute SQL queries (SELECT, INSERT, UPDATE, DELETE), and process <code>ResultSet</code> objects to return data in a format usable by the test scripts.</p>
+            </div>
+            
+            <div id="testng" class="content-section space-y-4">
+                <h2 class="text-3xl font-semibold text-amber-700 border-b border-stone-300 pb-2">11. TestNG Integration</h2>
+                <p class="text-lg leading-relaxed">TestNG is a powerful testing framework that orchestrates test execution and provides rich features for assertions and reporting.</p>
+                <ul class="list-disc list-inside space-y-1 pl-4 text-lg">
+                    <li><strong>Test Runner:</strong> Executes Cucumber features via a TestNG runner class.</li>
+                    <li><strong>Assertions:</strong> Provides assertion methods (<code>Assert.assertEquals()</code>, etc.) for validations within step definitions.</li>
+                    <li><strong>Test Grouping:</strong> Allows categorization of tests (e.g., smoke, regression) using Cucumber tags mapped in TestNG suites.</li>
+                    <li><strong>Parallel Execution:</strong> Supports parallel execution of features/scenarios via <code>testng.xml</code>.</li>
+                    <li><strong>Listeners:</strong> Enables custom actions during the test lifecycle (e.g., screenshots on failure).</li>
+                </ul>
+                <h3 class="text-2xl font-medium text-teal-700 mt-4">Example TestNG Runner for Cucumber:</h3>
+                <p class="text-md italic text-stone-600">File: <code>src/test/java/com/example/ecommerce/runners/TestRunner.java</code></p>
+                <div class="code-block">
+                    <button class="copy-button" onclick="copyCode(this)">Copy</button>
+                    <pre><code class="language-java">
+package com.example.ecommerce.runners;
+
+import io.cucumber.testng.AbstractTestNGCucumberTests;
+import io.cucumber.testng.CucumberOptions;
+import org.testng.annotations.DataProvider;
+
+@CucumberOptions(
+    features = "src/test/resources/features", // Path to your feature files
+    glue = "com.example.ecommerce.stepdefinitions", // Package where step definitions are
+    plugin = {
+        "pretty", // Prints Gherkin steps to console
+        "html:target/cucumber-reports/cucumber-pretty.html", // Basic HTML report
+        "json:target/cucumber-reports/CucumberTestReport.json", // JSON report
+        "rerun:target/cucumber-reports/rerun.txt" // File with failed scenarios
+    },
+    tags = "not @Ignore", // Example: run all tests not tagged with @Ignore
+    monochrome = true // Readable console output
+)
+public class TestRunner extends AbstractTestNGCucumberTests {
+
+    @Override
+    @DataProvider(parallel = true) // Configure parallel execution of scenarios
+    public Object[][] scenarios() {
+        return super.scenarios();
+    }
+}
+                    </code></pre>
+                </div>
+                <p class="text-lg leading-relaxed mt-2">The <code>testng.xml</code> file is then used to configure test suites, including which runner classes to execute and parameters for parallel execution.</p>
+            </div>
+
+            <div id="reporting" class="content-section space-y-4">
+                <h2 class="text-3xl font-semibold text-amber-700 border-b border-stone-300 pb-2">12. Reporting Strategy</h2>
+                <p class="text-lg leading-relaxed">Effective reporting is key to understanding test execution results and identifying issues. The strategy includes:</p>
+                <ul class="list-disc list-inside space-y-2 pl-4 text-lg bg-stone-50 p-4 rounded-lg shadow">
+                    <li><strong>Cucumber Reports:</strong>
+                        <ul class="list-disc list-inside pl-6 space-y-1">
+                            <li><strong>HTML Reports:</strong> Basic, human-readable reports generated by the Cucumber <code>html</code> plugin.</li>
+                            <li><strong>JSON Reports:</strong> Machine-readable reports useful for integration with CI/CD tools or third-party reporting libraries.</li>
+                        </ul>
+                    </li>
+                    <li><strong>TestNG Reports:</strong> Default TestNG reports (HTML and XML) providing summaries of test execution.</li>
+                    <li><strong>Advanced Reporting (Recommended):</strong>
+                        <ul class="list-disc list-inside pl-6 space-y-1">
+                            <li><strong>ExtentReports:</strong> Creates visually appealing and interactive HTML reports with detailed test information, screenshots, and execution trends. Can be integrated with TestNG listeners and Cucumber.</li>
+                            <li><strong>Allure Reports:</strong> Another powerful reporting tool providing rich visualizations, timelines, categorization of defects, and attachment capabilities.</li>
+                        </ul>
+                    </li>
+                </ul>
+                <p class="text-lg leading-relaxed mt-2">These reports provide valuable insights for developers, testers, and stakeholders, facilitating quick identification of failures and overall quality assessment.</p>
+            </div>
+
+            <div id="project-structure" class="content-section space-y-4">
+                <h2 class="text-3xl font-semibold text-amber-700 border-b border-stone-300 pb-2">13. Suggested Project Folder Structure (Maven)</h2>
+                <p class="text-lg leading-relaxed">A well-organized project structure is essential for maintainability and scalability. Here's a suggested Maven project layout:</p>
+                <div class="code-block folder-tree">
+                    <pre><code class="language-text">
+ecommerce-automation-framework/
+├── pom.xml
+└── src/
+    ├── main/java/  (Typically empty or for utility libs)
+    └── test/
+        ├── java/
+        │   └── com/
+        │       └── example/
+        │           └── ecommerce/
+        │               ├── <span class="folder">pages/</span>              (Selenium Page Objects)
+        │               │   ├── BasePage.java
+        │               │   └── ... 
+        │               ├── <span class="folder">stepdefinitions/</span>      (Cucumber Step Definitions)
+        │               │   ├── Hooks.java
+        │               │   └── ... 
+        │               ├── <span class="folder">runners/</span>              (TestNG Test Runners)
+        │               │   └── TestRunner.java
+        │               ├── <span class="folder">utils/</span>                (Helper/Utility classes)
+        │               │   ├── ConfigReader.java
+        │               │   ├── WebDriverFactory.java
+        │               │   ├── ApiClient.java
+        │               │   ├── DbClient.java
+        │               │   └── TestDataGenerator.java
+        │               └── <span class="folder">pojos/</span>                (POJOs for API data)
+        │                   └── User.java
+        └── resources/
+            ├── <span class="folder">features/</span>           (Cucumber .feature files)
+            │   └── ecommerce_purchase.feature
+            ├── <span class="folder">config/</span>             (Configuration files)
+            │   └── config.properties
+            ├── <span class="folder">testdata/</span>           (Test data files)
+            │   └── sample_products.json
+            └── log4j2.xml          (Logging configuration)
+
+target/                     (Maven build output)
+testng.xml                  (TestNG suite configuration)
+README.md
+                    </code></pre>
+                </div>
+            </div>
+
+            <div id="key-considerations" class="content-section space-y-4">
+                <h2 class="text-3xl font-semibold text-amber-700 border-b border-stone-300 pb-2">14. Key Considerations & Best Practices</h2>
+                <p class="text-lg leading-relaxed">Adhering to best practices is crucial for building a successful and sustainable E2E test automation framework.</p>
+                <ul class="list-disc list-inside space-y-3 pl-4 text-lg">
+                    <li>
+                        <strong>Test Data Management:</strong>
+                        <ul class="list-circle list-inside pl-6 text-md space-y-1">
+                            <li>Strive for independent tests; create necessary data at the start (ideally via API) and clean up afterwards.</li>
+                            <li>Use dynamic data generation (e.g., unique emails) to avoid collisions.</li>
+                            <li>Externalize test data from scripts (properties files, JSON, Excel).</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>Environment Stability & Configuration:</strong>
+                        <ul class="list-circle list-inside pl-6 text-md space-y-1">
+                            <li>Ensure test environments are stable and data is consistent or easily resettable.</li>
+                            <li>Manage environment-specific configurations (URLs, credentials) externally.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Maintainability:</strong> Adhere to POM, write clear Gherkin, keep step definitions reusable, and use meaningful naming.</li>
+                    <li><strong>Handling Flakiness:</strong> Implement robust explicit waits, use stable locators, and investigate root causes of flaky tests.</li>
+                    <li><strong>Atomic Tests:</strong> While E2E tests cover flows, individual checks within them should be focused.</li>
+                    <li><strong>Version Control:</strong> Use Git for source code management.</li>
+                    <li><strong>CI/CD Integration:</strong> Design the framework for easy integration into CI/CD pipelines.</li>
+                    <li><strong>Logging:</strong> Implement comprehensive logging (e.g., Log4j2, SLF4j) for debugging.</li>
+                    <li><strong>Screenshots/Video on Failure:</strong> Automatically capture visual evidence when tests fail.</li>
+                    <li><strong>Balance:</strong> E2E tests are valuable but can be slow. Balance them with unit and integration tests, focusing E2E on critical business flows.</li>
+                </ul>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const contentSections = document.querySelectorAll('.content-section');
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('main-content');
+
+            function setActiveSection(hash) {
+                contentSections.forEach(section => {
+                    if ('#' + section.id === hash) {
+                        section.classList.add('active');
+                    } else {
+                        section.classList.remove('active');
+                    }
+                });
+
+                navLinks.forEach(link => {
+                    if (link.getAttribute('href') === hash) {
+                        link.classList.add('bg-amber-300', 'text-amber-900', 'font-semibold');
+                        link.classList.remove('hover:bg-amber-200', 'hover:text-amber-800');
+                    } else {
+                        link.classList.remove('bg-amber-300', 'text-amber-900', 'font-semibold');
+                        link.classList.add('hover:bg-amber-200', 'hover:text-amber-800');
+                    }
+                });
+                mainContent.scrollTop = 0; // Scroll to top of content area
+            }
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    window.location.hash = targetId;
+                });
+            });
+
+            window.addEventListener('hashchange', function() {
+                setActiveSection(window.location.hash || '#overview');
+            });
+
+            // Set initial active section based on hash or default to #overview
+            setActiveSection(window.location.hash || '#overview');
+            if (!window.location.hash) { // Ensure #overview is in URL if no hash
+                 window.location.hash = '#overview';
+            }
+        });
+
+        function copyCode(buttonElement) {
+            const preElement = buttonElement.nextElementSibling; // Assuming <pre> is the next sibling
+            const codeElement = preElement.querySelector('code');
+            const textToCopy = codeElement.innerText;
+
+            // Use a temporary textarea element to copy text
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = textToCopy;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            try {
+                document.execCommand('copy');
+                buttonElement.innerText = 'Copied!';
+                setTimeout(() => {
+                    buttonElement.innerText = 'Copy';
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+                buttonElement.innerText = 'Error';
+                 setTimeout(() => {
+                    buttonElement.innerText = 'Copy';
+                }, 2000);
+            }
+            document.body.removeChild(tempTextArea);
+        }
+    </script>
+</body>
+</html>
+
